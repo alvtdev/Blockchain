@@ -36,11 +36,32 @@ public class BlockChain {
       }
    }
 
+/* member variables */
+   private ArrayList<BlockNode> heads;
+   private HashMap<ByteArrayWrapper, BlockNode> H;
+   private int height;
+   private BlockNode maxHeightBlock;
+   private TransactionPool txPool;
+   
    /* create an empty block chain with just a genesis block.
     * Assume genesis block is a valid block
+    * (reference code provided)
     */
    public BlockChain(Block genesisBlock) {
-      // IMPLEMENT THIS
+      UTXOPool uPool = new UTXOPool();
+      Transaction coinbase = genesisBlock.getCoinbase();
+      UTXO utxoCoinbase = new UTXO (coinbase.getHash(), 0);
+      uPool.addUTXO(utxoCoinbase, coinbase.getOutput(0));
+      BlockNode genesis = new BlockNode (genesisBlock, null, uPool);
+      
+      heads = new ArrayList<BlockNode>();
+      heads.add(genesis);
+      H = new HashMap<ByteArrayWrapper, BlockNode>();
+      H.put(new ByteArrayWrapper(genesisBlock.getHash()), genesis);
+      
+      height = 1;
+      maxHeightBlock = genesis;
+      txPool = new TransactionPool();
    }
 
    /* Get the maximum height block
@@ -61,8 +82,7 @@ public class BlockChain {
    /* Get the transaction pool to mine a new block
     */
    public TransactionPool getTransactionPool() {
-      // IMPLEMENT THIS
-	   return null;
+	   return txPool;
    }
 
    /* Add a block to block chain if it is valid.
