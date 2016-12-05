@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 
 /* Block Chain should maintain only limited block nodes to satisfy the functions
@@ -67,16 +68,18 @@ public class BlockChain {
    /* Get the maximum height block
     */
    public Block getMaxHeightBlock() {
-      // IMPLEMENT THIS
-	   return null;
+	   return maxHeightBlock.b;
    }
-   
+   /* Get the maximum height blockNode
+    */
+   public BlockNode getMaxHeightBlockNode() {
+	   return maxHeightBlock;
+   }
    /* Get the UTXOPool for mining a new block on top of 
     * max height block
     */
    public UTXOPool getMaxHeightUTXOPool() {
-      // IMPLEMENT THIS
-	   return null;
+	   return maxHeightBlock.getUTXOPoolCopy();
    }
    
    /* Get the transaction pool to mine a new block
@@ -91,16 +94,62 @@ public class BlockChain {
     * For example, you can try creating a new block over genesis block 
     * (block height 2) if blockChain height is <= CUT_OFF_AGE + 1. 
     * As soon as height > CUT_OFF_AGE + 1, you cannot create a new block at height 2.
-    * Return true of block is successfully added
+    * Return true if block is successfully added
     */
    public boolean addBlock(Block b) {
        // IMPLEMENT THIS
-	   return false;
+	   
+	   /*Return false if:
+	    * height > CUT_OFF_AGE
+	    * block b is a genesis block (prevhash = null)
+	    * prevBlockHash is invalid
+	    */
+	   if (height > CUT_OFF_AGE + 1) {
+		   return false;
+	   }
+	   else if (b.getPrevBlockHash() == null) {
+		   return false;
+	   }	   
+	   //ArrayList<Transaction> bTx = b.getTransactions();
+	   Transaction bTx[] = b.getTransactions().toArray(new Transaction[0]);
+	   TxHandler handlemytx = new TxHandler(getMaxHeightUTXOPool());
+	   
+	   /*use handleTxs to detect double spends and invalid Txs
+	    * if validTx == bTx, then block is valid and should be added.
+	   */
+	   Transaction validTx[] = handlemytx.handleTxs(bTx);
+	   
+	   if (/*bTx.length > 0 && validTx.length > 0 &&*/ !Arrays.equals(bTx, validTx)) return false;
+	   
+	   /* return false if invalid prevBlockHash detected
+	    */
+	   else if (getMaxHeightBlock().getHash() != b.getPrevBlockHash()) {
+		   return false;
+	   }
+	   /* steps to add a block
+	    * make blocknode with block
+	    * update height, maxheightblock
+	    * add to hash
+	    */
+	   BlockNode currMaxHeightBN = getMaxHeightBlockNode();
+	   BlockNode newBN = new BlockNode(b, currMaxHeightBN, getMaxHeightUTXOPool());
+	   currMaxHeightBN.children.add(newBN);
+	   currMaxHeightBN.b.finalize();
+	   
+	   H.put(new ByteArrayWrapper(b.getHash()), newBN);
+	   maxHeightBlock = newBN;	   	   
+	   
+	   if (b.getTransactions().size() == 0) {
+		   return true;
+	   }
+	   return true;
    }
 
    /* Add a transaction in transaction pool
     */
    public void addTransaction(Transaction tx) {
-      // IMPLEMENT THIS
+      if (txPool.getTransaction(tx.getHash()) == null) {
+    	  txPool.addTransaction(tx);
+      }
    }
 }
