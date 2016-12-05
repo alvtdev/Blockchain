@@ -43,6 +43,7 @@ public class BlockChain {
    private int height;
    private BlockNode maxHeightBlock;
    private TransactionPool txPool;
+   private BlockNode genesisblock;
    
    /* create an empty block chain with just a genesis block.
     * Assume genesis block is a valid block
@@ -62,6 +63,7 @@ public class BlockChain {
       
       height = 1;
       maxHeightBlock = genesis;
+      genesisblock = genesis;
       txPool = new TransactionPool();
    }
 
@@ -74,6 +76,11 @@ public class BlockChain {
     */
    public BlockNode getMaxHeightBlockNode() {
 	   return maxHeightBlock;
+   }
+   
+   
+   public BlockNode getGenesisBlockNode() {
+	   return genesisblock;
    }
    /* Get the UTXOPool for mining a new block on top of 
     * max height block
@@ -104,27 +111,29 @@ public class BlockChain {
 	    * block b is a genesis block (prevhash = null)
 	    * prevBlockHash is invalid
 	    */
+	   //ArrayList<Transaction> bTx = b.getTransactions();
+	   Transaction bTx[] = b.getTransactions().toArray(new Transaction[0]);
+	   TxHandler handlemytx = new TxHandler(getMaxHeightUTXOPool());
+	   Transaction validTx[] = handlemytx.handleTxs(bTx);
+	   
 	   if (height > CUT_OFF_AGE + 1) {
 		   return false;
 	   }
 	   else if (b.getPrevBlockHash() == null) {
 		   return false;
 	   }	   
-	   //ArrayList<Transaction> bTx = b.getTransactions();
-	   Transaction bTx[] = b.getTransactions().toArray(new Transaction[0]);
-	   TxHandler handlemytx = new TxHandler(getMaxHeightUTXOPool());
-	   
 	   /*use handleTxs to detect double spends and invalid Txs
 	    * if validTx == bTx, then block is valid and should be added.
 	   */
-	   Transaction validTx[] = handlemytx.handleTxs(bTx);
-	   
-	   if (/*bTx.length > 0 && validTx.length > 0 &&*/ !Arrays.equals(bTx, validTx)) return false;
-	   
+	   else if (/*bTx.length > 0 && validTx.length > 0 &&*/ !Arrays.equals(bTx, validTx)) {
+		   return false;
+	   }	   
 	   /* return false if invalid prevBlockHash detected
 	    */
-	   else if (getMaxHeightBlock().getHash() != b.getPrevBlockHash()) {
-		   return false;
+	   else if (b.getPrevBlockHash() != getGenesisBlockNode().b.getHash()) {
+		   if (getMaxHeightBlock().getHash() != b.getPrevBlockHash()) {
+			   return false;
+		   }
 	   }
 	   /* steps to add a block
 	    * make blocknode with block
