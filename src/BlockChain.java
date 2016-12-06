@@ -44,6 +44,7 @@ public class BlockChain {
    private BlockNode maxHeightBlock;
    private TransactionPool txPool;
    private BlockNode genesisblock;
+   private BlockNode prevProcessedBlock;
    
    /* create an empty block chain with just a genesis block.
     * Assume genesis block is a valid block
@@ -78,6 +79,9 @@ public class BlockChain {
 	   return maxHeightBlock;
    }
    
+   public BlockNode getPrevProcessedBlock() {
+	   return prevProcessedBlock;
+   }
    public int getHeight() {
 	   return height;
    }
@@ -117,50 +121,77 @@ public class BlockChain {
 	   Transaction bTx[] = b.getTransactions().toArray(new Transaction[0]);
 	   TxHandler handlemytx = new TxHandler(getMaxHeightUTXOPool());
 	   Transaction validTx[] = handlemytx.handleTxs(bTx);
+	   //BlockNode bParent = H.get(new ByteArrayWrapper(b.getPrevBlockHash()));
 	   
-	   if (getMaxHeightBlockNode().height > CUT_OFF_AGE + 1) {
+	   if (height > CUT_OFF_AGE + 1) {
 		   return false;
 	   }
-	   else if (b.getPrevBlockHash() == null) {
+	   if (b.getPrevBlockHash() == null) {
 		   return false;
-	   }	   
+	   }
 	   /*use handleTxs to detect double spends and invalid Txs
 	    * if validTx == bTx, then block is valid and should be added.
 	   */
-	   else if (bTx.length > 0 && !Arrays.equals(bTx, validTx)) {
+	   if (bTx.length > 0 && !Arrays.equals(bTx, validTx)) {
 		   return false;
-	   }	   
+	   }
 	   /* return false if invalid prevBlockHash detected
+	    * plan: check all blocknode hashes
 	    */
-	   else if (b.getPrevBlockHash() != getGenesisBlockNode().b.getHash()) {
-		   if (getMaxHeightBlock().getHash() != b.getPrevBlockHash()) {
-			   //return false;
-		   }
+	   else if (b.getPrevBlockHash() != getGenesisBlockNode().b.getHash()) {		   
+		   if (b.getPrevBlockHash() != getMaxHeightBlock().getHash()) {
+			   if (H.get(b.getPrevBlockHash()) == prevProcessedBlock) {
+				   return false;
+			   }
+			   /*
+			   boolean hashMatch = false;
+			   for (BlockNode childBlock : getGenesisBlockNode().children) {
+				   if (childBlock.children.size() > 0) {
+					   for (BlockNode childChildBlock : childBlock.children) {
+						   if (childChildBlock.children.size() == 0) {
+							   if (b.getPrevBlockHash() == childChildBlock.b.getHash()) {
+								   hashMatch = true; 
+								   break;
+							   }
+						   }
+					   }
+				   }
+				   else if (b.getPrevBlockHash() == childBlock.b.getHash() || hashMatch == true) {
+					   hashMatch = true;
+					   break;
+				   }
+			   }		   
+			   if (hashMatch == false) return false;
+			   */
+		   }		   
 	   }
 	   /* steps to add a block
 	    * make blocknode with block
 	    * update height, maxheightblock
 	    * add to hash
 	    */
-	   BlockNode currMaxHeightBN = getMaxHeightBlockNode();
+	   //BlockNode currMaxHeightBN = getMaxHeightBlockNode();
 	   //BlockNode newBN = new BlockNode(b, currMaxHeightBN, getMaxHeightUTXOPool());
 	   BlockNode newBN = new BlockNode(b, H.get(b.getPrevBlockHash()), getMaxHeightUTXOPool());
 	   //currMaxHeightBN.b.finalize();
 	   newBN.b.finalize();
+	   if (height > CUT_OFF_AGE + 1 && newBN.b.getPrevBlockHash() == getGenesisBlockNode().b.getHash()) return false;
 	   H.put(new ByteArrayWrapper(b.getHash()), newBN);
-	   if (newBN.height > height) maxHeightBlock = newBN;
-	   height = getMaxHeightBlockNode().height;
-	   
-	   if (b.getTransactions().size() == 0) {
-		   return true;
+	   if (newBN.height > this.height) {
+		   maxHeightBlock = newBN;
+		   this.height = newBN.height;
 	   }
+	   this.prevProcessedBlock = newBN;
+	   
+	   
 	   return true;
    }
 
    /* Add a transaction in transaction pool
     */
    public void addTransaction(Transaction tx) {
-      if (txPool.getTransaction(tx.getHash()) == null) {
+//	  TxHandler handlemytx = new TxHandler(getMaxHeightUTXOPool());
+      if (txPool.getTransaction(tx.getHash()) == null /* && handlemytx.isValidTx(tx)*/) {
     	  txPool.addTransaction(tx);
       }
    }
