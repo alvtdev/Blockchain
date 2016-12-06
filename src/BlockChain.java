@@ -213,13 +213,14 @@ public class BlockChain {
 		   height = newBN.height;
 	   }
 	   //this.prevProcessedBlock = newBN;
-	   
+	   	   
 	   return true;
    }
 
    /* Add a transaction in transaction pool
     */
    public void addTransaction(Transaction tx) {
-    	  txPool.addTransaction(tx);
+	   	  //System.out.println("Adding Transaction" + tx);
+    	  this.txPool.addTransaction(tx);
    }
 }

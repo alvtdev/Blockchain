@@ -851,6 +851,7 @@ public class DropboxTestBlockChain {
       Block prevBlock = genesisBlock;
       
       for (int i = 0; i < 20; i++) {
+    	 //System.out.println("Processing transaction #" + i);
          spendCoinbaseTx = new Transaction();
          spendCoinbaseTx.addInput(prevBlock.getCoinbase().getHash(), 0);
          spendCoinbaseTx.addOutput(Block.COINBASE, people.get(0).getPublicKey());
@@ -858,9 +859,16 @@ public class DropboxTestBlockChain {
          spendCoinbaseTx.finalize();
          blockHandler.processTx(spendCoinbaseTx);
          
+         //System.out.println("Creating Block #" + i);
          Block createdBlock = blockHandler.createBlock(people.get(0).getPublicKey());
-         
+                  
          passes = passes && createdBlock != null && createdBlock.getPrevBlockHash().equals(prevBlock.getHash()) && createdBlock.getTransactions().size() == 1 && createdBlock.getTransaction(0).equals(spendCoinbaseTx);
+         
+         //if (createdBlock != null) System.out.println("createdblock != null");
+         //if (createdBlock.getPrevBlockHash().equals(prevBlock.getHash())) System.out.println("createdBlock.getPrevBlockHash().equals(prevBlock.getHash())");
+         //if (createdBlock.getTransactions().size() == 1) System.out.println("createdBlock.getTransactions().size() == 1");
+         //if (createdBlock.getTransaction(0).equals(spendCoinbaseTx)) System.out.println("createdBlock.getTransaction(0).equals(spendCoinbaseTx)");
+         
          prevBlock = createdBlock;
       }
       return UtilCOS.printPassFail(passes);
