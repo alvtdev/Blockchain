@@ -121,25 +121,26 @@ public class BlockChain {
 	    * 4. if height > CUT_OFF_AGE + 1 (if yes, return false)
 	    */
 	  
-
+	   /* Check 1: B is a genesis block */
 	   if (b.getPrevBlockHash() == null) {
 		   return false;
 	   }
 
-	   if (H.get(new ByteArrayWrapper(b.getPrevBlockHash())) == null) {
+	   /* Check 2: B's parent is null */
+	   BlockNode bParent = H.get(new ByteArrayWrapper(b.getPrevBlockHash()));
+	   if (bParent == null) {
 		   return false; 
-	   }
-	   
-	   if (height > CUT_OFF_AGE + 1) {
-		   return false;
 	   }
 
 	   /*use handleTxs to detect double spends and invalid Txs
 	    * if validTx == bTx, then block is valid and should be added.
 	   */
 	   Transaction bTx[] = b.getTransactions().toArray(new Transaction[0]);
+	   
 	   //TxHandler handlemytx = new TxHandler(getMaxHeightUTXOPool()); 
-	   TxHandler handlemytx = new TxHandler(H.get(new ByteArrayWrapper(b.getPrevBlockHash())).getUTXOPoolCopy());
+	   //b's transactions must be based on parent's UTXO pool, not the max height UTXO pool
+	   UTXOPool bParentUTXO = bParent.getUTXOPoolCopy();
+	   TxHandler handlemytx = new TxHandler(bParentUTXO);
 	   Transaction validTx[] = handlemytx.handleTxs(bTx);   
 	   
 	   if (/*bTx.length > 0 &&*/ !Arrays.equals(bTx, validTx)) {
@@ -148,12 +149,13 @@ public class BlockChain {
 	   /* return false if invalid prevBlockHash detected
 	    * plan: check all blocknode hashes
 	    */
+	   /*
 	   else if (b.getPrevBlockHash() != getGenesisBlockNode().b.getHash()) {		   
 		   if (b.getPrevBlockHash() != getMaxHeightBlock().getHash()) {
 			   if (H.get(b.getPrevBlockHash()) == prevProcessedBlock) {
 				   //return false;
 			   }
-			   /*
+			   
 			   boolean hashMatch = false;
 			   for (BlockNode childBlock : getGenesisBlockNode().children) {
 				   if (childBlock.children.size() > 0) {
@@ -172,9 +174,10 @@ public class BlockChain {
 				   }
 			   }		   
 			   if (hashMatch == false) return false;
-			   */
+			   
 		   }		   
 	   }
+		*/
 	   /* steps to add a block
 	    * make blocknode with block
 	    * update height, maxheightblock
@@ -182,17 +185,17 @@ public class BlockChain {
 	    */
 	   //BlockNode currMaxHeightBN = getMaxHeightBlockNode();
 	   //BlockNode newBN = new BlockNode(b, currMaxHeightBN, getMaxHeightUTXOPool());
-	   BlockNode newBN = new BlockNode(b, H.get(b.getPrevBlockHash()), getMaxHeightUTXOPool());
+	   BlockNode newBN = new BlockNode(b, bParent, handlemytx.getUTXOPool());
 	   //currMaxHeightBN.b.finalize();
 	   //newBN.b.finalize();
 	   //if (height > CUT_OFF_AGE + 1 && newBN.b.getPrevBlockHash() == getGenesisBlockNode().b.getHash()) return false;
+
 	   H.put(new ByteArrayWrapper(b.getHash()), newBN);
-	   if (newBN.height > this.height) {
+	   if (newBN.height > height) {
 		   maxHeightBlock = newBN;
-		   this.height = newBN.height;
+		   height = newBN.height;
 	   }
-	   this.prevProcessedBlock = newBN;
-	   
+	   //this.prevProcessedBlock = newBN;
 	   
 	   return true;
    }
