@@ -131,7 +131,8 @@ public class BlockChain {
 	   if (bParent == null) {
 		   return false; 
 	   }
-
+	   
+	   /* Check 3: All Txs are Valid */
 	   /*use handleTxs to detect double spends and invalid Txs
 	    * if validTx == bTx, then block is valid and should be added.
 	   */
@@ -140,12 +141,28 @@ public class BlockChain {
 	   //TxHandler handlemytx = new TxHandler(getMaxHeightUTXOPool()); 
 	   //b's transactions must be based on parent's UTXO pool, not the max height UTXO pool
 	   UTXOPool bParentUTXO = bParent.getUTXOPoolCopy();
+	   
+	   //coinbase transaction - add to parent UTXO 
+	   Transaction cbTx = new Transaction(b.getCoinbase());
+	   UTXO cbUTXO = new UTXO(cbTx.getHash(), 0);
+	   bParentUTXO.addUTXO(cbUTXO, cbTx.getOutput(0));
+	   
 	   TxHandler handlemytx = new TxHandler(bParentUTXO);
 	   Transaction validTx[] = handlemytx.handleTxs(bTx);   
 	   
-	   if (/*bTx.length > 0 &&*/ !Arrays.equals(bTx, validTx)) {
+	   /* Comparison: check if bTx is a set of valid transactions. If not, return false */
+	   if (!Arrays.equals(bTx, validTx)) {
 		   return false;
 	   }
+	   
+
+	   /* Check 4: if blockChain height > CUT_OFF_AGE + 1, do not create new block at height 2 */
+	   //check height test output
+	   //System.out.println("Current Height: " + getHeight());
+	   if (b.getPrevBlockHash() == getGenesisBlockNode().b.getHash() && getHeight() > CUT_OFF_AGE + 1) {
+		   return false;
+	   }
+	   
 	   /* return false if invalid prevBlockHash detected
 	    * plan: check all blocknode hashes
 	    */
@@ -192,7 +209,7 @@ public class BlockChain {
 
 	   H.put(new ByteArrayWrapper(b.getHash()), newBN);
 	   if (newBN.height > height) {
-		   maxHeightBlock = newBN;
+		   this.maxHeightBlock = newBN;
 		   height = newBN.height;
 	   }
 	   //this.prevProcessedBlock = newBN;
