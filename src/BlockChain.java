@@ -187,6 +187,26 @@ public class BlockChain {
 		   height = newBN.height;
 	   }
 	   
+	   /* case: height < maxHeight - CUT_OFF_AGE */
+	   /* plan: remove heads such that height >= maxHeight - CUT_OFF_AGE
+	    * 		preserve children if necessary
+	    */
+	   if (height < heads.get(0).height - CUT_OFF_AGE) {
+		   ArrayList<BlockNode> headsToRemove = new ArrayList<BlockNode>();
+		   for (BlockNode a : heads) {
+			   if (a.children.size() > 0) {
+				   headsToRemove.add(a);
+				   for (BlockNode aChild : a.children) {
+					   heads.add(aChild);
+				   }
+			   }
+			   H.remove(new ByteArrayWrapper(a.b.getHash()));
+		   }
+		   for (BlockNode a : headsToRemove) {
+			   heads.remove(a);
+		   }
+	   }
+	   
 	   //this.prevProcessedBlock = newBN;
 	   	   
 	   return true;
