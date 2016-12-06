@@ -138,24 +138,17 @@ public class BlockChain {
 	   */
 	   Transaction bTx[] = b.getTransactions().toArray(new Transaction[0]);
 	   
-	   //TxHandler handlemytx = new TxHandler(getMaxHeightUTXOPool()); 
 	   //b's transactions must be based on parent's UTXO pool, not the max height UTXO pool
-	   UTXOPool bParentUTXO = bParent.getUTXOPoolCopy();
-	   
-	   //coinbase transaction - add to parent UTXO 
-	   Transaction cbTx = new Transaction(b.getCoinbase());
-	   UTXO cbUTXO = new UTXO(cbTx.getHash(), 0);
-	   bParentUTXO.addUTXO(cbUTXO, cbTx.getOutput(0));
-	   
+	   UTXOPool bParentUTXO = bParent.getUTXOPoolCopy();	    
+  
 	   TxHandler handlemytx = new TxHandler(bParentUTXO);
 	   Transaction validTx[] = handlemytx.handleTxs(bTx);   
-	   
+	   	      
 	   /* Comparison: check if bTx is a set of valid transactions. If not, return false */
-	   if (!Arrays.equals(bTx, validTx)) {
+	   if (validTx.length != bTx.length) {
 		   return false;
 	   }
 	   
-
 	   /* Check 4: if blockChain height > CUT_OFF_AGE + 1, do not create new block at height 2 */
 	   //check height test output
 	   //System.out.println("Current Height: " + getHeight());
@@ -163,55 +156,37 @@ public class BlockChain {
 		   return false;
 	   }
 	   
-	   /* return false if invalid prevBlockHash detected
-	    * plan: check all blocknode hashes
+	   /*After this point, assume all transactions are valid and can proceed to adding blocks*/
+	   
+	   /* add coinbase transactions to updated UTXO pool from handleTxs */
+	   Transaction cbTx = new Transaction(b.getCoinbase());
+	   UTXO cbUTXO = new UTXO(cbTx.getHash(), 0);
+	   /* reassign bParentUTXO before adding the coinbase UTXO,
+	    * since handleTx replaced old UTXOs with new UTXOs.
 	    */
-	   /*
-	   else if (b.getPrevBlockHash() != getGenesisBlockNode().b.getHash()) {		   
-		   if (b.getPrevBlockHash() != getMaxHeightBlock().getHash()) {
-			   if (H.get(b.getPrevBlockHash()) == prevProcessedBlock) {
-				   //return false;
-			   }
-			   
-			   boolean hashMatch = false;
-			   for (BlockNode childBlock : getGenesisBlockNode().children) {
-				   if (childBlock.children.size() > 0) {
-					   for (BlockNode childChildBlock : childBlock.children) {
-						   if (childChildBlock.children.size() == 0) {
-							   if (b.getPrevBlockHash() == childChildBlock.b.getHash()) {
-								   hashMatch = true; 
-								   break;
-							   }
-						   }
-					   }
-				   }
-				   else if (b.getPrevBlockHash() == childBlock.b.getHash() || hashMatch == true) {
-					   hashMatch = true;
-					   break;
-				   }
-			   }		   
-			   if (hashMatch == false) return false;
-			   
-		   }		   
+	   bParentUTXO = handlemytx.getUTXOPool();
+	   bParentUTXO.addUTXO(cbUTXO, cbTx.getOutput(0));
+
+	   /* remove b transactions from txpool */
+	   for (Transaction tx : b.getTransactions()) {
+		   //System.out.println("Removing " + tx);
+		   this.txPool.removeTransaction(tx.getHash()); 
 	   }
-		*/
-	   /* steps to add a block
-	    * make blocknode with block
-	    * update height, maxheightblock
-	    * add to hash
-	    */
-	   //BlockNode currMaxHeightBN = getMaxHeightBlockNode();
-	   //BlockNode newBN = new BlockNode(b, currMaxHeightBN, getMaxHeightUTXOPool());
-	   BlockNode newBN = new BlockNode(b, bParent, handlemytx.getUTXOPool());
-	   //currMaxHeightBN.b.finalize();
-	   //newBN.b.finalize();
-	   //if (height > CUT_OFF_AGE + 1 && newBN.b.getPrevBlockHash() == getGenesisBlockNode().b.getHash()) return false;
+	   
+
+   	   /* steps to add a block
+   	    * make blocknode with block
+   	    * update height, maxheightblock
+   	    * add to hash
+   	    */
+	   BlockNode newBN = new BlockNode(b, bParent, bParentUTXO);
 
 	   H.put(new ByteArrayWrapper(b.getHash()), newBN);
 	   if (newBN.height > height) {
 		   this.maxHeightBlock = newBN;
 		   height = newBN.height;
 	   }
+	   
 	   //this.prevProcessedBlock = newBN;
 	   	   
 	   return true;
@@ -221,6 +196,7 @@ public class BlockChain {
     */
    public void addTransaction(Transaction tx) {
 	   	  //System.out.println("Adding Transaction" + tx);
-    	  this.txPool.addTransaction(tx);
+    	  txPool.addTransaction(tx);
+    	  return;
    }
 }
